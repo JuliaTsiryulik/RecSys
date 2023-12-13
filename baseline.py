@@ -1,28 +1,8 @@
-
-
-
-
-#import os
-
-
-
-
-
-#from IPython.display import clear_output
-#!pip install implicit==0.5.2
-
-#clear_output()
-
+import collections
 from implicit.als import AlternatingLeastSquares
 from scipy.sparse import csr_matrix
 import pandas as pd
 import numpy as np
-#from typing import Dict
-#from multiprocessing import Pool
-#from tqdm import tqdm
-
-
-
 
 
 class BaseLine:
@@ -31,7 +11,6 @@ class BaseLine:
         self.orders_train = train_df
         self.orders_test = test_df
         
-
 
     def indexing(self):
         unique_customers = self.orders_train.customer_id.unique()
@@ -47,20 +26,18 @@ class BaseLine:
         return product_to_id, id_to_product, customer_to_id
 
     def last_views_top(self):
-        HISTORY_TOP = 20
+        HISTORY_TOP = 50
         # применяем оконную функцию
         self.orders_train['rank'] = (self.orders_train.groupby(by=['customer_id'])['order_day'].rank(method='first', ascending=True))
 
         ui_slim_df = (self.orders_train[self.orders_train['rank'] < HISTORY_TOP][['customer_id', 'product_id']])
 
-        #ui_slim_df.head()
 
         entries = np.ones(ui_slim_df.shape[0])
         return ui_slim_df, entries
 
     def create_csr(self, customer_to_id, product_to_id):
 
-        #product_to_id, id_to_product, customer_to_id = indexing(self.orders_train)
         ui_slim_df, entries = self.last_views_top()
 
         num_rows = len(customer_to_id)
@@ -77,13 +54,10 @@ class BaseLine:
         return train_set_csr
 
     def model_als_fit(self, train_set_csr, customer_to_id, product_to_id, factors=4, iterations=1):
-        #os.environ['OPENBLAS_NUM_THREADS'] = '1'
         
-        #train_set_csr = self.create_csr(customer_to_id, product_to_id)
-        
-
-        implict_als_params = {'factors': factors, 'iterations': iterations}
+        implict_als_params = {'factors': factors, 'alpha': 0.2, 'iterations': iterations, 'calculate_training_loss': True}
         model = AlternatingLeastSquares(**implict_als_params)
+
         # на вход подаём матрицу user_item
         model.fit(train_set_csr)
         return model
